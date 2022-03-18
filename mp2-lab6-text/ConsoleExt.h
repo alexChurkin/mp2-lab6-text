@@ -1,6 +1,6 @@
 #include <Windows.h>
 
-void clrscr(void)
+void ClearScreen()
 {
 	HANDLE Console = GetStdHandle(STD_OUTPUT_HANDLE);
 	if (!Console) return;
@@ -18,7 +18,7 @@ void clrscr(void)
 	SetConsoleCursorPosition(Console, zpos);
 }
 
-void clreol(void)
+/*void ClrEol()
 {
 	HANDLE Console = GetStdHandle(STD_OUTPUT_HANDLE);
 	if (!Console)return;
@@ -38,7 +38,7 @@ void clreol(void)
 	SetConsoleCursorPosition(Console, buf.dwCursorPosition);
 }
 
-void gotoxy(int x, int y)
+void GotoPos(int x, int y)
 {
 	HANDLE Console = GetStdHandle(STD_OUTPUT_HANDLE);
 	if (!Console)return;
@@ -48,4 +48,4 @@ void gotoxy(int x, int y)
 	pos.Y = y;
 
 	SetConsoleCursorPosition(Console, pos);
-}
+}*/

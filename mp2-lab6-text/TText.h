@@ -41,7 +41,7 @@ class TText
 {
 private:
     TNode* pFirst, * pCurr;
-    //В стеке хранятся все указатели, до текущего (текущий не хранится)
+    //В стеке сохраняются все указатели до текущего (текущий не хранится)
     //При перемещениях стек модифицируем
     TStack<TNode*> st;
 
@@ -54,6 +54,7 @@ private:
     int textLevel = 0;
 
     void PrintRec(TNode* p);
+    void WriteRec(TNode* p, ostream& out);
 
 public:
     //Перемещение указателя pCurr на следующее звено
@@ -82,19 +83,20 @@ public:
 
     //Возврат pCurr на первое звено
     void Reset();
-    //извлекается что-то из стека
-    //и потомков извлечённой вершины кладём в стек
-    //переводит pCurr на новую вершину стека
+    //Переход pCurr далее
     void GoNext();
+    //Проверка окончания обхода
     bool IsEnd();
 
+    //Получение строки текущего звена
     char* GetCurrentLine();
 
     //Загрузка текста из файла
     void Load(string fn);
+    //Печать текста на экран
     void Print();
-    void ExportRec(ostream& out);
-    void Export(string fn);
+    //Сохранение текста в файл
+    void Save(string fn);
 };
 
 TNode* TText::ReadRec(ifstream& fin)
@@ -109,6 +111,8 @@ TNode* TText::ReadRec(ifstream& fin)
             pTemp->pDown = ReadRec(fin);
         else if (str[0] == '}')
             break;
+        else if (strcmp(str, "") == 0)
+            continue;
         else
         {
             TNode* newNode = new TNode(str);
@@ -124,13 +128,15 @@ TNode* TText::ReadRec(ifstream& fin)
 
 void TText::PrintRec(TNode* p)
 {
-    //можно ещё скобки печатать (если pDown существует, печатать скобки сверху, снизу)
-    //можно даже смещение текста делать
     if (p != nullptr)
     {
         for (int i = 0; i < textLevel; i++)
             cout << "   ";
-        cout << " " << p->str << '\n';
+
+        if (p == pCurr) cout << "*";
+        else cout << " ";
+
+        cout << p->str << '\n';
 
         textLevel++;
         PrintRec(p->pDown);
@@ -139,10 +145,25 @@ void TText::PrintRec(TNode* p)
     }
 }
 
+void TText::WriteRec(TNode* p, ostream& out)
+{
+    if (p != nullptr)
+    {
+        out << p->str << '\n';
+        if (p->pDown != nullptr)
+        {
+            out << "{\n";
+            WriteRec(p->pDown, out);
+
+            out << "}\n";
+        }
+        WriteRec(p->pNext, out);
+    }
+}
+
 void TText::GoNextNode()
 {
-    if (pCurr == nullptr)
-        throw "Can't reach the next node: current node doesn't exist";
+    if (pCurr != nullptr && pCurr->pNext != nullptr)
     {
         st.Push(pCurr);
         pCurr = pCurr->pNext;
@@ -151,8 +172,7 @@ void TText::GoNextNode()
 
 void TText::GoDownNode()
 {
-    if (pCurr == nullptr)
-        throw "Can't reach down node: current node doesn't exist";
+    if (pCurr != nullptr && pCurr->pDown != nullptr)
     {
         st.Push(pCurr);
         pCurr = pCurr->pDown;
@@ -161,11 +181,11 @@ void TText::GoDownNode()
 
 void TText::GoUp()
 {
-    if (st.IsEmpty())
-        throw "Can't go up: transitions history is empty";
-
-    TNode* prevNode = st.Pop();
-    pCurr = prevNode;
+    if (!st.IsEmpty())
+    {
+        TNode* prevNode = st.Pop();
+        pCurr = prevNode;
+    }
 }
 
 void TText::GoFirstNode()
@@ -176,62 +196,69 @@ void TText::GoFirstNode()
 
 void TText::InsNextLine(char* _str)
 {
-    if (pCurr == nullptr)
-        throw "Can't insert next line: current node doesn't exist";
-    TNode* newNode = new TNode(_str);
-    newNode->pNext = pCurr->pNext;
-    pCurr->pNext = newNode;
+    if (pCurr != nullptr)
+    {
+        TNode* newNode = new TNode(_str);
+        newNode->pNext = pCurr->pNext;
+        pCurr->pNext = newNode;
+    }
 }
 
 void TText::InsNextSection(char* _str)
 {
-    if (pCurr == nullptr)
-        throw "Can't insert next section: current node doesn't exist";
-    TNode* newNode = new TNode(_str);
-    newNode->pDown = pCurr->pNext;
-    pCurr->pNext = newNode;
+    if (pCurr != nullptr)
+    {
+        TNode* newNode = new TNode(_str);
+        newNode->pDown = pCurr->pNext;
+        pCurr->pNext = newNode;
+    }
 }
 
 void TText::InsDownLine(char* _str)
 {
-    if (pCurr == nullptr)
-        throw "Can't insert down line: current node doesn't exist";
-    TNode* newNode = new TNode(_str);
-    newNode->pNext = pCurr->pDown;
-    pCurr->pDown = newNode;
+    if (pCurr != nullptr)
+    {
+        TNode* newNode = new TNode(_str);
+        newNode->pNext = pCurr->pDown;
+        pCurr->pDown = newNode;
+    }
 }
 
 void TText::InsDownSection(char* _str)
 {
-    if (pCurr == nullptr)
-        throw "Can't insert down section: current node doesn't exist";
-    TNode* newNode = new TNode(_str);
-    newNode->pDown = pCurr->pDown;
-    pCurr->pDown = newNode;
+    if (pCurr != nullptr)
+    {
+        TNode* newNode = new TNode(_str);
+        newNode->pDown = pCurr->pDown;
+        pCurr->pDown = newNode;
+    }
 }
 
 void TText::DelNext()
 {
-    if (pCurr == nullptr)
-        throw "Can't delete next line/section: current node doesn't exist";
-    TNode* pDel = pCurr->pNext;
-
-    if (pDel == nullptr)
-        throw "Nothing to delete: next line/section is nullptr";
-    pCurr->pNext = pDel->pNext;
-    delete pDel;
+    if (pCurr != nullptr)
+    {
+        TNode* pDel = pCurr->pNext;
+        if (pDel != nullptr)
+        {
+            pCurr->pNext = pDel->pNext;
+            delete pDel;
+        }
+    }
 }
 
 void TText::DelDown()
 {
-    if (pCurr == nullptr)
-        throw "Can't delete next line/section: current node doesn't exist";
-    TNode* pDel = pCurr->pDown;
+    if (pCurr != nullptr)
+    {
+        TNode* pDel = pCurr->pDown;
+        if (pDel != nullptr)
+        {
+            pCurr->pDown = pDel->pNext;
+            delete pDel;
+        }
+    }
 
-    if (pDel == nullptr)
-        throw "Nothing to delete: next line/section is nullptr";
-    pCurr->pDown = pDel->pNext;
-    delete pDel;
 }
 
 void TText::Reset()
@@ -290,19 +317,14 @@ void TText::Print()
     PrintRec(pFirst);
 }
 
-void TText::ExportRec(ostream& out)
-{
-
-}
-
-void TText::Export(string fn)
+void TText::Save(string fn)
 {
     std::ofstream out;
     out.open(fn);
 
     if (!out.is_open()) throw "Export exception!";
 
-    Print();
+    WriteRec(pFirst, out);
 }
 
 //Описание
@@ -314,12 +336,10 @@ void TText::Export(string fn)
 //строка2
 //.......
 //строкаn
-
 //Пока не конец файла (while != EOF), читаем новую строку и пристыковываем через pNext
 //отступов никаких нет, текст без пробелов в начале.
 //затем началась подчинённая часть
 //скобки находятся в первом символе строки (в строках не может быть скобок)
-
 //строка1
 //строка2
 //{
@@ -330,5 +350,4 @@ void TText::Export(string fn)
 //  }
 //}
 //строкаn
-
-///(отступов нет)
+//(отступов нет)
