@@ -33,6 +33,7 @@ TNode::TNode(char* _str,
 TNode::~TNode()
 {
     //TODO позже напишем
+
 }
 
 /* .................... Иерархический текст ................... */
@@ -196,6 +197,50 @@ public:
             throw "Nothing to delete: next line/section is nullptr";
         pCurr->pDown = pDel->pNext;
         delete pDel;
+    }
+
+    //Возврат pCurr на первое звено
+    void Reset()
+    {
+        st.Clear();
+
+        if (pFirst != nullptr)
+        {
+            pCurr = pFirst;
+
+            //Текущий элемент в стек
+            st.Push(pCurr);
+
+            //pDown и pNext в стек, если они есть
+            //(!) порядок ифов можно и менять
+            if (pCurr->pNext != nullptr)
+                st.Push(pCurr->pNext);
+            if (pCurr->pDown != nullptr)
+                st.Push(pCurr->pDown);
+        }
+    }
+
+    //извлекается что-то из стека
+    //и потомков извлечённой вершины кладём в стек
+    //переводит pCurr на новую вершину стека
+    void GoNext()
+    {
+        pCurr = st.Pop();
+
+        //Если не дошли до "фиктивной строки снизу стека"
+        if (pCurr != pFirst)
+        {
+            //(!) порядок ифов можно и менять
+            if (pCurr->pNext != nullptr)
+                st.Push(pCurr->pNext);
+            if (pCurr->pDown != nullptr)
+                st.Push(pCurr->pDown);
+        }
+    }
+
+    bool IsEnd()
+    {
+        return st.IsEmpty();
     }
 
     //Загрузка текста из файла
