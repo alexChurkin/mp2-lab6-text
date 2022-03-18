@@ -91,8 +91,10 @@ public:
     char* GetCurrentLine();
 
     //Загрузка текста из файла
-    void Load(string s);
+    void Load(string fn);
     void Print();
+    void ExportRec(ostream& out);
+    void Export(string fn);
 };
 
 TNode* TText::ReadRec(ifstream& fin)
@@ -277,9 +279,9 @@ char* TText::GetCurrentLine()
     return pCurr->str;
 }
 
-void TText::Load(string s)
+void TText::Load(string fn)
 {
-    ifstream ifs(s);
+    ifstream ifs(fn);
     pFirst = ReadRec(ifs);
 }
 
@@ -288,6 +290,20 @@ void TText::Print()
     PrintRec(pFirst);
 }
 
+void TText::ExportRec(ostream& out)
+{
+
+}
+
+void TText::Export(string fn)
+{
+    std::ofstream out;
+    out.open(fn);
+
+    if (!out.is_open()) throw "Export exception!";
+
+    Print();
+}
 
 //Описание
 //Чтение из файла, вывод на экран
