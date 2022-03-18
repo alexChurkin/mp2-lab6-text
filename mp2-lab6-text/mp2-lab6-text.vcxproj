@@ -142,7 +142,7 @@
     <ClCompile Include="mp2-lab6-text.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CmdExtensions.h" />
+    <ClInclude Include="ConsoleExt.h" />
     <ClInclude Include="TStack.h" />
     <ClInclude Include="TText.h" />
   </ItemGroup>
