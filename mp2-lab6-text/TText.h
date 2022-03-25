@@ -127,7 +127,8 @@ void TNode::PrintFreeNodes()
 	TNode* p = mem.pFree;
 	while (p != nullptr)
 	{
-		cout << p->str << '\n';
+		if(p->str[0] != '\0')
+			cout << p->str << '\n';
 		p = p->pNext;
 	}
 }
@@ -197,7 +198,7 @@ public:
 	void NotGarbage();
 
 	//Очистка текста
-	static void CleanMem(TText& t);
+	void CleanMem();
 };
 
 TNode* TText::ReadRec(ifstream& fin)
@@ -433,14 +434,14 @@ void TText::NotGarbage()
 	pCurr->Garbage = false;
 }
 
-void TText::CleanMem(TText& t)
+void TText::CleanMem()
 {
 	//Проход по списку свободных, отметка всех свободных как "не мусор"
-	for (t.Reset(); !t.IsEnd(); t.GoNext())
+	for (Reset(); !IsEnd(); GoNext())
 	{
 		//TODO Этот новый метод должен опускать флаг у t.pCurr
 		//(pCurr->Garbage = false)
-		t.NotGarbage();
+		NotGarbage();
 	}
 
 	//Проход по списку занятых, отметка всех занятых как "не мусор"

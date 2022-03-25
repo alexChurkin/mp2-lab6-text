@@ -113,7 +113,7 @@ int main()
 
 	cout << "Free nodes:\n";
 	TNode::PrintFreeNodes();
-	TText::CleanMem(t);
+	t.CleanMem();
 	cout << "Free nodes after cleaning:\n";
 	TNode::PrintFreeNodes();
 }
