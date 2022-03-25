@@ -4,327 +4,446 @@
 
 using namespace std;
 
+
+//Поскольку структура TNode использует TMem, а TMem - TNode,
+//то используем упреждающее определение для TNode
+struct TNode;
+
+/* .................... Память для TNode ...................... */
+struct TMem
+{
+	TNode* pFirst;
+	TNode* pFree;
+	TNode* pLast;
+};
+
 /* ........... Звено иерархического списка (текста) ........... */
 struct TNode
 {
-    char str[81];
-    TNode* pNext;
-    TNode* pDown;
+	char str[81];
+	TNode* pNext;
+	TNode* pDown;
 
-    TNode(char* _str = nullptr,
-        TNode* _pNext = nullptr,
-        TNode* _pDown = nullptr);
+	//Флаг (мусор/не мусор)
+	bool Garbage;
 
-    ~TNode();
+	static TMem mem;
+
+	TNode(char* _str = nullptr,
+		TNode* _pNext = nullptr,
+		TNode* _pDown = nullptr);
+
+	~TNode();
+
+	//Возвращает указатель на первое свободное звено
+	void* operator new(size_t size);
+	//Освобождает память и возвращает pFree назад
+	void operator delete(void* ptr);
+
+	//Статический метод для инициализации структуры TMem
+	static void InitMem(size_t size);
+
+	static void CleanMem(TText& t)
+	{
+		//Проход по списку свободных, отметка всех свободных как "не мусор"
+		for (t.Reset(); !t.IsEnd(); t.GoNext())
+		{
+			//TODO Этот новый метод должен опускать флаг у t.pCurr
+			//(pCurr->Garbage = false)
+			t.NotGarbage();
+		}
+
+		//Проход по списку занятых, отметка всех занятых как "не мусор"
+		TNode* p = mem.pFree;
+		while (p != nullptr)
+		{
+			p->Garbage = false;
+			p = p->pNext;
+		}
+
+		//Остальное - мусор, его нужно вернуть в список свободных
+		p = mem.pFirst;
+		for (p = mem.pFirst; p <= mem.pLast; p++)
+		{
+			if (p->Garbage)
+			{
+				//Это наш самописный delete
+				delete p;
+
+				//Сам дописал
+				p->Garbage = false;
+			}
+		}
+	}
 };
 
 TNode::TNode(
-    char* _str,
-    TNode* _pNext,
-    TNode* _pDown)
+	char* _str,
+	TNode* _pNext,
+	TNode* _pDown)
 {
-    if (_str == nullptr)
-        str[0] = '\0';
-    else
-        strcpy(str, _str);
-    pNext = _pNext;
-    pDown = _pDown;
+	if (_str == nullptr)
+		str[0] = '\0';
+	else
+		strcpy(str, _str);
+	pNext = _pNext;
+	pDown = _pDown;
 }
 
 TNode::~TNode()
 {
-    //TODO позже напишем
+	//TODO позже напишем
+}
+
+void* TNode::operator new(size_t size)
+{
+	TNode* tmp = mem.pFree;
+
+	if (tmp == nullptr)
+		throw "Out of memory";
+
+	mem.pFree = mem.pFree->pNext;
+
+	//ВОЗМОЖНО, ПРИДЁТСЯ ЧТО-ТО ДОПИСАТЬ
+	return tmp;
+}
+
+void TNode::operator delete(void* ptr)
+{
+	//Запомнили pFree
+	TNode* tmp = mem.pFree;
+	//Запомнили освобождённый
+	TNode* p1 = (TNode*)ptr;
+	//Новый освобождённый теперь показывает на следующий свободный
+	p1->pNext = tmp;
+	//Обновим первый свободный
+	mem.pFree = p1;
+
+	//Оптимальнее (проверить):
+	//TNode* newpFree = (TNode*) ptr;
+	//newpFree->pNext = mem.pFree;
+	//mem.pFree = newpFree;
+
+	//ВОЗМОЖНО, ПРИДЁТСЯ ЧТО-ТО ДОПИСАТЬ
+}
+
+void TNode::InitMem(size_t size)
+{
+	//new здесь не сработает!
+	//mem.pFirst = new TNode(s);
+
+	//Выделение памяти под size элементов TNode (через костыль)
+	mem.pFirst = (TNode*) new char[size * sizeof(TNode)];
+
+	//Установка pFree
+	mem.pFree = mem.pFirst;
+	//Вычисление pLast через pFree
+	mem.pLast = mem.pFirst + (size - 1);
+
+	TNode* p = mem.pFirst;
+	//Расстановка pNext'ов ([ ] -> [ ] -> ... [ ] -> [ ])
+	for (int i = 0; i < size - 1; i++)
+	{
+		p->pNext = p + 1;
+		p->str[0] = 0;
+		p->Garbage = true;
+
+		p += 1;
+	}
+	//Установка null для последнего
+	mem.pLast->pNext = nullptr;
+	mem.pLast->str[0] = 0;
 }
 
 /* .................... Иерархический текст ................... */
 class TText
 {
 private:
-    TNode* pFirst, * pCurr;
-    //В стеке сохраняются все указатели до текущего (текущий не хранится)
-    //При перемещениях стек модифицируем
-    TStack<TNode*> st;
+	TNode* pFirst, * pCurr;
+	//В стеке сохраняются все указатели до текущего (текущий не хранится)
+	//При перемещениях стек модифицируем
+	TStack<TNode*> st;
 
-    //Рекурсивное чтение из файла
-    TNode* ReadRec(ifstream& fin);
+	//Рекурсивное чтение из файла
+	TNode* ReadRec(ifstream& fin);
 
-    //Печать на экран текста
-    //печатает саму строку, потом всё по pDown, потом всё по pNext
-    //(рекурсивно)
-    int textLevel = 0;
+	//Печать на экран текста
+	//печатает саму строку, потом всё по pDown, потом всё по pNext
+	//(рекурсивно)
+	int textLevel = 0;
 
-    void PrintRec(TNode* p);
-    void WriteRec(TNode* p, ostream& out);
+	void PrintRec(TNode* p);
+	void WriteRec(TNode* p, ostream& out);
 
 public:
-    //Перемещение указателя pCurr на следующее звено
-    void GoNextNode();
-    //Перемещение указателя pCurr на звено подчинённой ему части
-    void GoDownNode();
-    //Переход назад (вверх) по вложенности
-    void GoUp();
-    //Возврат в корневую (самую первую) строку всего текста
-    void GoFirstNode();
+	//Перемещение указателя pCurr на следующее звено
+	void GoNextNode();
+	//Перемещение указателя pCurr на звено подчинённой ему части
+	void GoDownNode();
+	//Переход назад (вверх) по вложенности
+	void GoUp();
+	//Возврат в корневую (самую первую) строку всего текста
+	void GoFirstNode();
 
-    //Вставка новой строки за текущей
-    void InsNextLine(char* _str);
-    //Вставка нового заголовка за текущей строкой и
-    //переподчинение всей нижней части списка ему
-    void InsNextSection(char* _str);
-    //Вставка новой строки в начало подчинённой части
-    void InsDownLine(char* _str);
-    //Вставка нового заголовка в подчинённую часть
-    void InsDownSection(char* _str);
+	//Вставка новой строки за текущей
+	void InsNextLine(char* _str);
+	//Вставка нового заголовка за текущей строкой и
+	//переподчинение всей нижней части списка ему
+	void InsNextSection(char* _str);
+	//Вставка новой строки в начало подчинённой части
+	void InsDownLine(char* _str);
+	//Вставка нового заголовка в подчинённую часть
+	void InsDownSection(char* _str);
 
-    //С утечкой памяти (удаляется только pDel, но не его внутренности)!!!
-    //Удалить следующее звено
-    void DelNext();
-    void DelDown();
+	//С утечкой памяти (удаляется только pDel, но не его внутренности)!!!
+	//Удалить следующее звено
+	void DelNext();
+	void DelDown();
 
-    //Возврат pCurr на первое звено
-    void Reset();
-    //Переход pCurr далее
-    void GoNext();
-    //Проверка окончания обхода
-    bool IsEnd();
+	//Возврат pCurr на первое звено
+	void Reset();
+	//Переход pCurr далее
+	void GoNext();
+	//Проверка окончания обхода
+	bool IsEnd();
 
-    //Получение строки текущего звена
-    char* GetCurrentLine();
+	//Получение строки текущего звена
+	char* GetCurrentLine();
 
-    //Загрузка текста из файла
-    void Load(string fn);
-    //Печать текста на экран
-    void Print();
-    //Сохранение текста в файл
-    void Save(string fn);
+	//Загрузка текста из файла
+	void Load(string fn);
+	//Печать текста на экран
+	void Print();
+	//Сохранение текста в файл
+	void Save(string fn);
 };
 
 TNode* TText::ReadRec(ifstream& fin)
 {
-    TNode* pTemp = nullptr, * pHead = nullptr;
-    char str[81];
+	TNode* pTemp = nullptr, * pHead = nullptr;
+	char str[81];
 
-    while (!fin.eof())
-    {
-        fin.getline(str, 81, '\n');
-        if (str[0] == '{')
-            pTemp->pDown = ReadRec(fin);
-        else if (str[0] == '}')
-            break;
-        else if (strcmp(str, "") == 0)
-            continue;
-        else
-        {
-            TNode* newNode = new TNode(str);
-            if (pHead == nullptr)
-                pTemp = pHead = newNode;
-            else
-                pTemp->pNext = newNode;
-            pTemp = newNode;
-        }
-    }
-    return pHead;
+	while (!fin.eof())
+	{
+		fin.getline(str, 81, '\n');
+		if (str[0] == '{')
+			pTemp->pDown = ReadRec(fin);
+		else if (str[0] == '}')
+			break;
+		else if (strcmp(str, "") == 0)
+			continue;
+		else
+		{
+			TNode* newNode = new TNode(str);
+			if (pHead == nullptr)
+				pTemp = pHead = newNode;
+			else
+				pTemp->pNext = newNode;
+			pTemp = newNode;
+		}
+	}
+	return pHead;
 }
 
 void TText::PrintRec(TNode* p)
 {
-    if (p != nullptr)
-    {
-        for (int i = 0; i < textLevel; i++)
-            cout << "   ";
+	if (p != nullptr)
+	{
+		for (int i = 0; i < textLevel; i++)
+			cout << "   ";
 
-        if (p == pCurr) cout << "*";
-        else cout << " ";
+		if (p == pCurr) cout << "*";
+		else cout << " ";
 
-        cout << p->str << '\n';
+		cout << p->str << '\n';
 
-        textLevel++;
-        PrintRec(p->pDown);
-        textLevel--;
-        PrintRec(p->pNext);
-    }
+		textLevel++;
+		PrintRec(p->pDown);
+		textLevel--;
+		PrintRec(p->pNext);
+	}
 }
 
 void TText::WriteRec(TNode* p, ostream& out)
 {
-    if (p != nullptr)
-    {
-        out << p->str << '\n';
-        if (p->pDown != nullptr)
-        {
-            out << "{\n";
-            WriteRec(p->pDown, out);
+	if (p != nullptr)
+	{
+		out << p->str << '\n';
+		if (p->pDown != nullptr)
+		{
+			out << "{\n";
+			WriteRec(p->pDown, out);
 
-            out << "}\n";
-        }
-        WriteRec(p->pNext, out);
-    }
+			out << "}\n";
+		}
+		WriteRec(p->pNext, out);
+	}
 }
 
 void TText::GoNextNode()
 {
-    if (pCurr != nullptr && pCurr->pNext != nullptr)
-    {
-        st.Push(pCurr);
-        pCurr = pCurr->pNext;
-    }
+	if (pCurr != nullptr && pCurr->pNext != nullptr)
+	{
+		st.Push(pCurr);
+		pCurr = pCurr->pNext;
+	}
 }
 
 void TText::GoDownNode()
 {
-    if (pCurr != nullptr && pCurr->pDown != nullptr)
-    {
-        st.Push(pCurr);
-        pCurr = pCurr->pDown;
-    }
+	if (pCurr != nullptr && pCurr->pDown != nullptr)
+	{
+		st.Push(pCurr);
+		pCurr = pCurr->pDown;
+	}
 }
 
 void TText::GoUp()
 {
-    if (!st.IsEmpty())
-    {
-        TNode* prevNode = st.Pop();
-        pCurr = prevNode;
-    }
+	if (!st.IsEmpty())
+	{
+		TNode* prevNode = st.Pop();
+		pCurr = prevNode;
+	}
 }
 
 void TText::GoFirstNode()
 {
-    st.Clear();
-    pCurr = pFirst;
+	st.Clear();
+	pCurr = pFirst;
 }
 
 void TText::InsNextLine(char* _str)
 {
-    if (pCurr != nullptr)
-    {
-        TNode* newNode = new TNode(_str);
-        newNode->pNext = pCurr->pNext;
-        pCurr->pNext = newNode;
-    }
+	if (pCurr != nullptr)
+	{
+		TNode* newNode = new TNode(_str);
+		newNode->pNext = pCurr->pNext;
+		pCurr->pNext = newNode;
+	}
 }
 
 void TText::InsNextSection(char* _str)
 {
-    if (pCurr != nullptr)
-    {
-        TNode* newNode = new TNode(_str);
-        newNode->pDown = pCurr->pNext;
-        pCurr->pNext = newNode;
-    }
+	if (pCurr != nullptr)
+	{
+		TNode* newNode = new TNode(_str);
+		newNode->pDown = pCurr->pNext;
+		pCurr->pNext = newNode;
+	}
 }
 
 void TText::InsDownLine(char* _str)
 {
-    if (pCurr != nullptr)
-    {
-        TNode* newNode = new TNode(_str);
-        newNode->pNext = pCurr->pDown;
-        pCurr->pDown = newNode;
-    }
+	if (pCurr != nullptr)
+	{
+		TNode* newNode = new TNode(_str);
+		newNode->pNext = pCurr->pDown;
+		pCurr->pDown = newNode;
+	}
 }
 
 void TText::InsDownSection(char* _str)
 {
-    if (pCurr != nullptr)
-    {
-        TNode* newNode = new TNode(_str);
-        newNode->pDown = pCurr->pDown;
-        pCurr->pDown = newNode;
-    }
+	if (pCurr != nullptr)
+	{
+		TNode* newNode = new TNode(_str);
+		newNode->pDown = pCurr->pDown;
+		pCurr->pDown = newNode;
+	}
 }
 
 void TText::DelNext()
 {
-    if (pCurr != nullptr)
-    {
-        TNode* pDel = pCurr->pNext;
-        if (pDel != nullptr)
-        {
-            pCurr->pNext = pDel->pNext;
-            delete pDel;
-        }
-    }
+	if (pCurr != nullptr)
+	{
+		TNode* pDel = pCurr->pNext;
+		if (pDel != nullptr)
+		{
+			pCurr->pNext = pDel->pNext;
+			delete pDel;
+		}
+	}
 }
 
 void TText::DelDown()
 {
-    if (pCurr != nullptr)
-    {
-        TNode* pDel = pCurr->pDown;
-        if (pDel != nullptr)
-        {
-            pCurr->pDown = pDel->pNext;
-            delete pDel;
-        }
-    }
+	if (pCurr != nullptr)
+	{
+		TNode* pDel = pCurr->pDown;
+		if (pDel != nullptr)
+		{
+			pCurr->pDown = pDel->pNext;
+			delete pDel;
+		}
+	}
 
 }
 
 void TText::Reset()
 {
-    st.Clear();
+	st.Clear();
 
-    if (pFirst != nullptr)
-    {
-        pCurr = pFirst;
+	if (pFirst != nullptr)
+	{
+		pCurr = pFirst;
 
-        //Текущий элемент в стек
-        st.Push(pCurr);
+		//Текущий элемент в стек
+		st.Push(pCurr);
 
-        //pDown и pNext в стек, если они есть
-        //(!) порядок ифов можно и менять
-        if (pCurr->pNext != nullptr)
-            st.Push(pCurr->pNext);
-        if (pCurr->pDown != nullptr)
-            st.Push(pCurr->pDown);
-    }
+		//pDown и pNext в стек, если они есть
+		//(!) порядок ифов можно и менять
+		if (pCurr->pNext != nullptr)
+			st.Push(pCurr->pNext);
+		if (pCurr->pDown != nullptr)
+			st.Push(pCurr->pDown);
+	}
 }
 
 void TText::GoNext()
 {
-    pCurr = st.Pop();
+	pCurr = st.Pop();
 
-    //Если не дошли до "фиктивной строки снизу стека"
-    if (pCurr != pFirst)
-    {
-        //(!) порядок ифов можно и менять
-        if (pCurr->pNext != nullptr)
-            st.Push(pCurr->pNext);
-        if (pCurr->pDown != nullptr)
-            st.Push(pCurr->pDown);
-    }
+	//Если не дошли до "фиктивной строки снизу стека"
+	if (pCurr != pFirst)
+	{
+		//(!) порядок ифов можно и менять
+		if (pCurr->pNext != nullptr)
+			st.Push(pCurr->pNext);
+		if (pCurr->pDown != nullptr)
+			st.Push(pCurr->pDown);
+	}
 }
 
 bool TText::IsEnd()
 {
-    return st.IsEmpty();
+	return st.IsEmpty();
 }
 
 char* TText::GetCurrentLine()
 {
-    return pCurr->str;
+	return pCurr->str;
 }
 
 void TText::Load(string fn)
 {
-    ifstream ifs(fn);
-    pFirst = ReadRec(ifs);
+	ifstream ifs(fn);
+	pFirst = ReadRec(ifs);
 }
 
 void TText::Print()
 {
-    PrintRec(pFirst);
+	PrintRec(pFirst);
 }
 
 void TText::Save(string fn)
 {
-    std::ofstream out;
-    out.open(fn);
+	std::ofstream out;
+	out.open(fn);
 
-    if (!out.is_open()) throw "Export exception!";
+	if (!out.is_open()) throw "Export exception!";
 
-    WriteRec(pFirst, out);
+	WriteRec(pFirst, out);
 }
 
 //Описание
