@@ -110,4 +110,10 @@ int main()
 
 		ClearScreen();
 	} while (ch != ESC);
+
+	cout << "Free nodes:\n";
+	TNode::PrintFreeNodes();
+	TText::CleanMem(t);
+	cout << "Free nodes after cleaning:\n";
+	TNode::PrintFreeNodes();
 }

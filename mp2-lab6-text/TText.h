@@ -41,7 +41,9 @@ struct TNode
 
 	//Статический метод для инициализации структуры TMem
 	static void InitMem(size_t size);
-	//Сборка мусора
+	static void PrintFreeNodes();
+
+	//Сборка мусора должна быть здесь
 	//static void CleanMem(TText& t);
 };
 
@@ -120,38 +122,15 @@ void TNode::InitMem(size_t size)
 	mem.pLast->str[0] = 0;
 }
 
-/*void TNode::CleanMem(TText& t)
+void TNode::PrintFreeNodes()
 {
-	//Проход по списку свободных, отметка всех свободных как "не мусор"
-	for (t.Reset(); !t.IsEnd(); t.GoNext())
-	{
-		//TODO Этот новый метод должен опускать флаг у t.pCurr
-		//(pCurr->Garbage = false)
-		t.NotGarbage();
-	}
-
-	//Проход по списку занятых, отметка всех занятых как "не мусор"
 	TNode* p = mem.pFree;
 	while (p != nullptr)
 	{
-		p->Garbage = false;
+		cout << p->str << '\n';
 		p = p->pNext;
 	}
-
-	//Остальное - мусор, его нужно вернуть в список свободных
-	p = mem.pFirst;
-	for (p = mem.pFirst; p <= mem.pLast; p++)
-	{
-		if (p->Garbage)
-		{
-			//Это наш самописный delete
-			delete p;
-
-			//Сам дописал
-			p->Garbage = false;
-		}
-	}
-}*/
+}
 
 /* .................... Иерархический текст ................... */
 class TText
@@ -216,6 +195,9 @@ public:
 	void Save(string fn);
 	//Пометка текущего звена как "не мусор"
 	void NotGarbage();
+
+	//Очистка текста
+	static void CleanMem(TText& t);
 };
 
 TNode* TText::ReadRec(ifstream& fin)
@@ -449,6 +431,39 @@ void TText::Save(string fn)
 void TText::NotGarbage()
 {
 	pCurr->Garbage = false;
+}
+
+void TText::CleanMem(TText& t)
+{
+	//Проход по списку свободных, отметка всех свободных как "не мусор"
+	for (t.Reset(); !t.IsEnd(); t.GoNext())
+	{
+		//TODO Этот новый метод должен опускать флаг у t.pCurr
+		//(pCurr->Garbage = false)
+		t.NotGarbage();
+	}
+
+	//Проход по списку занятых, отметка всех занятых как "не мусор"
+	TNode* p = TNode::mem.pFree;
+	while (p != nullptr)
+	{
+		p->Garbage = false;
+		p = p->pNext;
+	}
+
+	//Остальное - мусор, его нужно вернуть в список свободных
+	p = TNode::mem.pFirst;
+	for (p = TNode::mem.pFirst; p <= TNode::mem.pLast; p++)
+	{
+		if (p->Garbage)
+		{
+			//Это наш самописный delete
+			delete p;
+
+			//Сам дописал
+			p->Garbage = false;
+		}
+	}
 }
 
 //Описание
