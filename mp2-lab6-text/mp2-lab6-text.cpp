@@ -19,7 +19,7 @@ void OnEsc(TText &t)
 {
 
 	cout << "\nTText.Print():\n";
-	cout << "-----------\n";
+	cout << "-------------\n";
 	t.Print();
 	cout << '\n';
 
@@ -111,14 +111,17 @@ int main()
 		ClearScreen();
 	} while (ch != ESC);
 
-	cout << "Free nodes:\n";
+	cout << ">> Free nodes <<:\n";
+	cout << "----------------\n";
 	TNode::PrintFreeNodes();
 	cout << '\n';
 
 	t.CleanMem();
-	cout << "Free nodes after garbage collection:\n";
+	cout << ">> Free nodes after garbage collection <<:\n";
+	cout << "-----------------------------------------\n";
 	TNode::PrintFreeNodes();
 
-	cout << "\nFinal output:\n";
+	cout << "\n>> Final output <<:\n";
+	cout << "------------------\n";
 	t.Print();
 }
