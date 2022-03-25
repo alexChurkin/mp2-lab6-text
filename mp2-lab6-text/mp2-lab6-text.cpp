@@ -13,10 +13,11 @@
 #include "TText.h"
 #include "ConsoleExt.h"
 
-TText t;
+TMem TNode::mem;
 
-void OnEsc()
+void OnEsc(TText &t)
 {
+
 	cout << "\nTText.Print():\n";
 	cout << "-----------\n";
 	t.Print();
@@ -33,6 +34,11 @@ void OnEsc()
 
 int main()
 {
+	//Инициализация памяти под TNode'ы для TText
+	TNode::InitMem(100);
+
+	TText t;
+
 	t.Load("..\\text.txt");
 	t.GoFirstNode();
 
@@ -51,7 +57,7 @@ int main()
 			ch = _getch();
 		if (ch == ESC)
 		{
-			OnEsc();
+			OnEsc(t);
 			break;
 		}
 			

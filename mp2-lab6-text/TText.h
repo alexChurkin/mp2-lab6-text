@@ -4,7 +4,6 @@
 
 using namespace std;
 
-
 //Поскольку структура TNode использует TMem, а TMem - TNode,
 //то используем упреждающее определение для TNode
 struct TNode;
@@ -42,39 +41,8 @@ struct TNode
 
 	//Статический метод для инициализации структуры TMem
 	static void InitMem(size_t size);
-
-	static void CleanMem(TText& t)
-	{
-		//Проход по списку свободных, отметка всех свободных как "не мусор"
-		for (t.Reset(); !t.IsEnd(); t.GoNext())
-		{
-			//TODO Этот новый метод должен опускать флаг у t.pCurr
-			//(pCurr->Garbage = false)
-			t.NotGarbage();
-		}
-
-		//Проход по списку занятых, отметка всех занятых как "не мусор"
-		TNode* p = mem.pFree;
-		while (p != nullptr)
-		{
-			p->Garbage = false;
-			p = p->pNext;
-		}
-
-		//Остальное - мусор, его нужно вернуть в список свободных
-		p = mem.pFirst;
-		for (p = mem.pFirst; p <= mem.pLast; p++)
-		{
-			if (p->Garbage)
-			{
-				//Это наш самописный delete
-				delete p;
-
-				//Сам дописал
-				p->Garbage = false;
-			}
-		}
-	}
+	//Сборка мусора
+	//static void CleanMem(TText& t);
 };
 
 TNode::TNode(
@@ -129,9 +97,6 @@ void TNode::operator delete(void* ptr)
 
 void TNode::InitMem(size_t size)
 {
-	//new здесь не сработает!
-	//mem.pFirst = new TNode(s);
-
 	//Выделение памяти под size элементов TNode (через костыль)
 	mem.pFirst = (TNode*) new char[size * sizeof(TNode)];
 
@@ -154,6 +119,39 @@ void TNode::InitMem(size_t size)
 	mem.pLast->pNext = nullptr;
 	mem.pLast->str[0] = 0;
 }
+
+/*void TNode::CleanMem(TText& t)
+{
+	//Проход по списку свободных, отметка всех свободных как "не мусор"
+	for (t.Reset(); !t.IsEnd(); t.GoNext())
+	{
+		//TODO Этот новый метод должен опускать флаг у t.pCurr
+		//(pCurr->Garbage = false)
+		t.NotGarbage();
+	}
+
+	//Проход по списку занятых, отметка всех занятых как "не мусор"
+	TNode* p = mem.pFree;
+	while (p != nullptr)
+	{
+		p->Garbage = false;
+		p = p->pNext;
+	}
+
+	//Остальное - мусор, его нужно вернуть в список свободных
+	p = mem.pFirst;
+	for (p = mem.pFirst; p <= mem.pLast; p++)
+	{
+		if (p->Garbage)
+		{
+			//Это наш самописный delete
+			delete p;
+
+			//Сам дописал
+			p->Garbage = false;
+		}
+	}
+}*/
 
 /* .................... Иерархический текст ................... */
 class TText
@@ -216,6 +214,8 @@ public:
 	void Print();
 	//Сохранение текста в файл
 	void Save(string fn);
+	//Пометка текущего звена как "не мусор"
+	void NotGarbage();
 };
 
 TNode* TText::ReadRec(ifstream& fin)
@@ -444,6 +444,11 @@ void TText::Save(string fn)
 	if (!out.is_open()) throw "Export exception!";
 
 	WriteRec(pFirst, out);
+}
+
+void TText::NotGarbage()
+{
+	pCurr->Garbage = false;
 }
 
 //Описание
