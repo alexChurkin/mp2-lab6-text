@@ -29,7 +29,7 @@ void OnEsc(TText &t)
 		cout << t.GetCurrentLine() << '\n';
 
 	t.Save("..\\out.txt");
-	cout << "Text saved to out.txt :)\n";
+	cout << "\nOutput saved to out.txt.\n\n";
 }
 
 int main()
@@ -113,7 +113,12 @@ int main()
 
 	cout << "Free nodes:\n";
 	TNode::PrintFreeNodes();
+	cout << '\n';
+
 	t.CleanMem();
-	cout << "Free nodes after cleaning:\n";
+	cout << "Free nodes after garbage collection:\n";
 	TNode::PrintFreeNodes();
+
+	cout << "\nFinal output:\n";
+	t.Print();
 }
