@@ -7,6 +7,7 @@ using namespace std;
 //Поскольку структура TNode использует TMem, а TMem - TNode,
 //то используем упреждающее определение для TNode
 struct TNode;
+class TText;
 
 /* .................... Память для TNode ...................... */
 struct TMem
@@ -43,9 +44,76 @@ struct TNode
 	static void InitMem(size_t size);
 	static void PrintFreeNodes();
 
-	//Сборка мусора должна быть здесь
-	//static void CleanMem(TText& t);
+	//Сборка мусора
+	static void CleanMem(TText& t);
 };
+
+/* .................... Иерархический текст ................... */
+class TText
+{
+private:
+	TNode* pFirst, * pCurr;
+	//В стеке сохраняются все указатели до текущего (текущий не хранится)
+	//При перемещениях стек модифицируем
+	TStack<TNode*> st;
+
+	//Рекурсивное чтение из файла
+	TNode* ReadRec(ifstream& fin);
+
+	//Печать на экран текста
+	//печатает саму строку, потом всё по pDown, потом всё по pNext
+	//(рекурсивно)
+	int textLevel = 0;
+
+	void PrintRec(TNode* p);
+	void WriteRec(TNode* p, ostream& out);
+
+public:
+	//Перемещение указателя pCurr на следующее звено
+	void GoNextNode();
+	//Перемещение указателя pCurr на звено подчинённой ему части
+	void GoDownNode();
+	//Переход назад (вверх) по вложенности
+	void GoUp();
+	//Возврат в корневую (самую первую) строку всего текста
+	void GoFirstNode();
+
+	//Вставка новой строки за текущей
+	void InsNextLine(char* _str);
+	//Вставка нового заголовка за текущей строкой и
+	//переподчинение всей нижней части списка ему
+	void InsNextSection(char* _str);
+	//Вставка новой строки в начало подчинённой части
+	void InsDownLine(char* _str);
+	//Вставка нового заголовка в подчинённую часть
+	void InsDownSection(char* _str);
+
+	//С утечкой памяти (удаляется только pDel, но не его внутренности)!!!
+	//Удалить следующее звено
+	void DelNext();
+	void DelDown();
+
+	//Возврат pCurr на первое звено
+	void Reset();
+	//Переход pCurr далее
+	void GoNext();
+	//Проверка окончания обхода
+	bool IsEnd();
+
+	//Получение строки текущего звена
+	char* GetCurrentLine();
+
+	//Загрузка текста из файла
+	void Load(string fn);
+	//Печать текста на экран
+	void Print();
+	//Сохранение текста в файл
+	void Save(string fn);
+	//Пометка текущего звена как "не мусор"
+	void NotGarbage();
+};
+
+//................................................................
 
 TNode::TNode(
 	char* _str,
@@ -58,11 +126,6 @@ TNode::TNode(
 		strcpy(str, _str);
 	pNext = _pNext;
 	pDown = _pDown;
-}
-
-TNode::~TNode()
-{
-	//TODO позже напишем
 }
 
 void* TNode::operator new(size_t size)
@@ -133,73 +196,39 @@ void TNode::PrintFreeNodes()
 	}
 }
 
-/* .................... Иерархический текст ................... */
-class TText
+void TNode::CleanMem(TText& t)
 {
-private:
-	TNode* pFirst, * pCurr;
-	//В стеке сохраняются все указатели до текущего (текущий не хранится)
-	//При перемещениях стек модифицируем
-	TStack<TNode*> st;
+	//Проход по списку свободных, отметка всех свободных как "не мусор"
+	for (t.Reset(); !t.IsEnd(); t.GoNext())
+	{
+		//(pCurr->Garbage = false)
+		t.NotGarbage();
+	}
 
-	//Рекурсивное чтение из файла
-	TNode* ReadRec(ifstream& fin);
+	//Проход по списку занятых, отметка всех занятых как "не мусор"
+	TNode* p = TNode::mem.pFree;
+	while (p != nullptr)
+	{
+		p->Garbage = false;
+		p = p->pNext;
+	}
 
-	//Печать на экран текста
-	//печатает саму строку, потом всё по pDown, потом всё по pNext
-	//(рекурсивно)
-	int textLevel = 0;
+	//Остальное - мусор, его нужно вернуть в список свободных
+	p = TNode::mem.pFirst;
+	for (p = TNode::mem.pFirst; p <= TNode::mem.pLast; p++)
+	{
+		if (p->Garbage)
+		{
+			//Это наш самописный delete
+			delete p;
 
-	void PrintRec(TNode* p);
-	void WriteRec(TNode* p, ostream& out);
+			//Сам дописал
+			p->Garbage = false;
+		}
+	}
+}
 
-public:
-	//Перемещение указателя pCurr на следующее звено
-	void GoNextNode();
-	//Перемещение указателя pCurr на звено подчинённой ему части
-	void GoDownNode();
-	//Переход назад (вверх) по вложенности
-	void GoUp();
-	//Возврат в корневую (самую первую) строку всего текста
-	void GoFirstNode();
-
-	//Вставка новой строки за текущей
-	void InsNextLine(char* _str);
-	//Вставка нового заголовка за текущей строкой и
-	//переподчинение всей нижней части списка ему
-	void InsNextSection(char* _str);
-	//Вставка новой строки в начало подчинённой части
-	void InsDownLine(char* _str);
-	//Вставка нового заголовка в подчинённую часть
-	void InsDownSection(char* _str);
-
-	//С утечкой памяти (удаляется только pDel, но не его внутренности)!!!
-	//Удалить следующее звено
-	void DelNext();
-	void DelDown();
-
-	//Возврат pCurr на первое звено
-	void Reset();
-	//Переход pCurr далее
-	void GoNext();
-	//Проверка окончания обхода
-	bool IsEnd();
-
-	//Получение строки текущего звена
-	char* GetCurrentLine();
-
-	//Загрузка текста из файла
-	void Load(string fn);
-	//Печать текста на экран
-	void Print();
-	//Сохранение текста в файл
-	void Save(string fn);
-	//Пометка текущего звена как "не мусор"
-	void NotGarbage();
-
-	//Очистка текста
-	void CleanMem();
-};
+//................................................................
 
 TNode* TText::ReadRec(ifstream& fin)
 {
@@ -432,39 +461,6 @@ void TText::Save(string fn)
 void TText::NotGarbage()
 {
 	pCurr->Garbage = false;
-}
-
-void TText::CleanMem()
-{
-	//Проход по списку свободных, отметка всех свободных как "не мусор"
-	for (Reset(); !IsEnd(); GoNext())
-	{
-		//TODO Этот новый метод должен опускать флаг у t.pCurr
-		//(pCurr->Garbage = false)
-		NotGarbage();
-	}
-
-	//Проход по списку занятых, отметка всех занятых как "не мусор"
-	TNode* p = TNode::mem.pFree;
-	while (p != nullptr)
-	{
-		p->Garbage = false;
-		p = p->pNext;
-	}
-
-	//Остальное - мусор, его нужно вернуть в список свободных
-	p = TNode::mem.pFirst;
-	for (p = TNode::mem.pFirst; p <= TNode::mem.pLast; p++)
-	{
-		if (p->Garbage)
-		{
-			//Это наш самописный delete
-			delete p;
-
-			//Сам дописал
-			p->Garbage = false;
-		}
-	}
 }
 
 //Описание

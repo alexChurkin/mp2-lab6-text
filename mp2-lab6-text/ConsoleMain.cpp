@@ -116,7 +116,7 @@ int main()
 	TNode::PrintFreeNodes();
 	cout << '\n';
 
-	t.CleanMem();
+	TNode::CleanMem(t);
 	cout << ">> Free nodes after garbage collection <<:\n";
 	cout << "-----------------------------------------\n";
 	TNode::PrintFreeNodes();
