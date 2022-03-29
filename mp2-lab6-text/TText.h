@@ -33,8 +33,6 @@ struct TNode
 		TNode* _pNext = nullptr,
 		TNode* _pDown = nullptr);
 
-	~TNode();
-
 	//¬озвращает указатель на первое свободное звено
 	void* operator new(size_t size);
 	//ќсвобождает пам€ть и возвращает pFree назад
