@@ -66,7 +66,15 @@ private:
 	void PrintRec(TNode* p);
 	void WriteRec(TNode* p, ostream& out);
 
+	//Рекурсивное копирование (звена и его следующих/подчинённых)
+	TNode* CopyNode(TNode* p);
+
 public:
+	TText();
+	TText(const TText& t);
+	TText(TNode* p);
+	//Функция копирования; вызывает рекурсивную функцию копирования
+	TText* GetCopy();
 	//Перемещение указателя pCurr на следующее звено
 	void GoNextNode();
 	//Перемещение указателя pCurr на звено подчинённой ему части
@@ -188,7 +196,7 @@ void TNode::PrintFreeNodes()
 	TNode* p = mem.pFree;
 	while (p != nullptr)
 	{
-		if(p->str[0] != '\0')
+		if (p->str[0] != '\0')
 			cout << p->str << '\n';
 		p = p->pNext;
 	}
@@ -227,6 +235,42 @@ void TNode::CleanMem(TText& t)
 }
 
 //................................................................
+
+TText::TText() { }
+
+TText::TText(TNode* p)
+{
+	pFirst = p;
+	pCurr = nullptr;
+}
+
+TText::TText(const TText& t)
+{
+	//TODO
+}
+
+TNode* TText::CopyNode(TNode* p)
+{
+	TNode* pd, * pn, *pCopy;
+
+	if (p->pDown != nullptr)
+		pd = CopyNode(p->pDown);
+	else pd = nullptr;
+
+	if (p->pNext != nullptr)
+		pn = CopyNode(p->pNext);
+	else pn = nullptr;
+
+	pCopy = new TNode(p->str, pn, pd);
+	return pCopy;
+}
+
+TText* TText::GetCopy()
+{
+	TText* res;
+	res = new TText(CopyNode(pFirst));
+	return res;
+}
 
 TNode* TText::ReadRec(ifstream& fin)
 {
