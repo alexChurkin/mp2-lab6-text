@@ -124,4 +124,11 @@ int main()
 	cout << "\n>> Final output <<:\n";
 	cout << "------------------\n";
 	t.Print();
+	
+
+	cout << "\nCopy test:\n";
+	cout << "---------\n";
+
+	TText* t2 = t.GetCopy();
+	t2->Print();
 }

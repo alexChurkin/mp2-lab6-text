@@ -71,7 +71,6 @@ private:
 
 public:
 	TText();
-	TText(const TText& t);
 	TText(TNode* p);
 	//Функция копирования; вызывает рекурсивную функцию копирования
 	TText* GetCopy();
@@ -242,11 +241,6 @@ TText::TText(TNode* p)
 {
 	pFirst = p;
 	pCurr = nullptr;
-}
-
-TText::TText(const TText& t)
-{
-	//TODO
 }
 
 TNode* TText::CopyNode(TNode* p)
