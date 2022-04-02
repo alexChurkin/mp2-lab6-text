@@ -124,7 +124,6 @@ int main()
 	cout << "\n>> Final output <<:\n";
 	cout << "------------------\n";
 	t.Print();
-	
 
 	cout << "\nCopy test:\n";
 	cout << "---------\n";

@@ -235,37 +235,6 @@ void TNode::CleanMem(TText& t)
 
 //................................................................
 
-TText::TText() { }
-
-TText::TText(TNode* p)
-{
-	pFirst = p;
-	pCurr = nullptr;
-}
-
-TNode* TText::CopyNode(TNode* p)
-{
-	TNode* pd, * pn, *pCopy;
-
-	if (p->pDown != nullptr)
-		pd = CopyNode(p->pDown);
-	else pd = nullptr;
-
-	if (p->pNext != nullptr)
-		pn = CopyNode(p->pNext);
-	else pn = nullptr;
-
-	pCopy = new TNode(p->str, pn, pd);
-	return pCopy;
-}
-
-TText* TText::GetCopy()
-{
-	TText* res;
-	res = new TText(CopyNode(pFirst));
-	return res;
-}
-
 TNode* TText::ReadRec(ifstream& fin)
 {
 	TNode* pTemp = nullptr, * pHead = nullptr;
@@ -326,6 +295,37 @@ void TText::WriteRec(TNode* p, ostream& out)
 		}
 		WriteRec(p->pNext, out);
 	}
+}
+
+TNode* TText::CopyNode(TNode* p)
+{
+	TNode* pd, * pn, * pCopy;
+
+	if (p->pDown != nullptr)
+		pd = CopyNode(p->pDown);
+	else pd = nullptr;
+
+	if (p->pNext != nullptr)
+		pn = CopyNode(p->pNext);
+	else pn = nullptr;
+
+	pCopy = new TNode(p->str, pn, pd);
+	return pCopy;
+}
+
+TText::TText() { }
+
+TText::TText(TNode* p)
+{
+	pFirst = p;
+	pCurr = nullptr;
+}
+
+TText* TText::GetCopy()
+{
+	TText* res;
+	res = new TText(CopyNode(pFirst));
+	return res;
 }
 
 void TText::GoNextNode()
